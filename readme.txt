@@ -59,7 +59,12 @@ This section describes how to install and setup the Gravity Forms Stripe Add-On.
 4. Add your Stripe API keys to the Stripe tab on the Settings page (Forms->Settings).
 5. If using Stripe subscriptions, follow the instructions to setup your Stripe webhooks and check the box once you are done.
 6. Create a form, adding at least one product field along with the new 'Credit Card' field that appears under 'Pricing Fields.' Keep in mind that Stripe accepts a minimum charge of $0.50 - this means that the total amount of your form must be at least $0.50.
-7. Under Forms->Stripe, add a Stripe feed for your new form.
+7. For a subscription product:
+    1. Make sure this is the *only* product field on this form
+    2. Choose 'Radio Buttons' for product field type
+    3. Check the 'enable values' box that appears
+    4. For each plan choice, enter the Stripe plan ID in the 'Value' box, and the plan price in the 'Price' box
+8. Under Forms->Stripe, add a Stripe feed for your new form. Be sure to choose the correct 'Transaction Type'
 
 == Frequently Asked Questions ==
 
@@ -72,9 +77,10 @@ $0.50, [per Stripe](https://stripe.com/help/faq)
 == Screenshots ==
 
 1. Settings page
-2. Credit Card field
-3. Stripe feed
-4. Webhook Setup
+2. Webhook setup
+3. Credit Card field
+4. Subscription product setup
+5. Stripe feed
 
 == Changelog ==
 = 0.2 =
