@@ -3,13 +3,13 @@
 Plugin Name: Gravity Forms Stripe Add-On
 Plugin URI: http://naomicbush.github.com/Gravity-Forms-Stripe
 Description: Use Stripe to process credit card payments on your site, easily and securely, with Gravity Forms
-Version: develop
+Version: 0.2-beta
 Author: Naomi C. Bush
 Author URI: http://naomicbush.com
 
 ------------------------------------------------------------------------
 Copyright 2012 Naomi C. Bush
-last updated: April 18, 2012
+last updated: May 8, 2012
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -46,16 +46,12 @@ add_action( 'init', array( 'GFStripe', 'init' ) );
 
 //limits currency to US Dollars
 add_filter( 'gform_currency', create_function( '', 'return "USD";' ) );
-//add_action( 'subscription_cron', array( 'GFStripe', 'subscription_cron' ) );
 add_action( 'parse_request', array( 'GFStripe', 'parse_request' ) );
 
 register_activation_hook( GRAVITYFORMS_STRIPE_FILE, array( 'GFStripe', 'add_permissions' ) );
 
 class GFStripe {
 
-	//private static $path = dirname( GRAVITYFORMS_STRIPE_FILE ) . '/stripe.php';
-	//private static $url = 'http://www.gravityforms.com';
-	//private static $slug = dirname( GRAVITYFORMS_STRIPE_FILE );
 	private static $version = '0.2';
 	private static $min_gravityforms_version = '1.6.3.3';
 	private static $transaction_response = '';
@@ -65,17 +61,11 @@ class GFStripe {
 	public static function init() {
 		self::$log = self::create_logger();
 
-		//self::setup_cron();
-
 		if ( basename( $_SERVER[ 'PHP_SELF' ] ) == 'plugins.php' ) {
 
 			//loading translations
 			load_plugin_textdomain( 'gravityforms-stripe', FALSE, dirname( GRAVITYFORMS_STRIPE_FILE ) . '/languages' );
 
-			//add_action( 'after_plugin_row_' . self::$path, array( 'GFStripe', 'plugin_row' ) );
-
-			//force new remote request for version info on the plugin page
-			//self::flush_version_info();
 		}
 
 		if ( ! self::is_gravityforms_supported() )
@@ -89,11 +79,6 @@ class GFStripe {
 			//loading translations
 			load_plugin_textdomain( 'gravityforms-stripe', FALSE, dirname( GRAVITYFORMS_STRIPE_FILE ) . '/languages' );
 
-			/*automatic upgrade hooks
-            add_filter("transient_update_plugins", array('GFStripe', 'check_update'));
-            add_filter("site_transient_update_plugins", array('GFStripe', 'check_update'));
-            add_action('install_plugins_pre_plugin-information', array('GFStripe', 'display_changelog'));*/
-
 			//integrating with Members plugin
 			if ( function_exists( 'members_get_capabilities' ) )
 				add_filter( 'members_get_capabilities', array( 'GFStripe', 'members_get_capabilities' ) );
@@ -104,23 +89,13 @@ class GFStripe {
 			//enables credit card field
 			add_filter( 'gform_enable_credit_card_field', '__return_true' );
 
-			//add new product field input type for subscriptions
-			//add_action( 'gform_editor_js', array( 'GFStripe', 'gform_editor_js' ) );
-			//add_action( 'gform_editor_js_set_default_values', array( 'GFStripe', 'gform_editor_js_set_default_values' ) );
-
-
 			if ( self::is_stripe_page() ) {
 
 				//enqueueing sack for AJAX requests
 				wp_enqueue_script( array( 'sack' ) );
 
 				//loading data lib
-				//require_once(self::get_base_path() . "/data.php");
 				require_once( GRAVITYFORMS_STRIPE_PATH . '/data.php' );
-
-				/*loading upgrade lib
-                if(!class_exists("RGAuthorizeNetUpgrade"))
-                    require_once("plugin-upgrade.php");*/
 
 				//loading Gravity Forms tooltips
 				require_once( GFCommon::get_base_path() . '/tooltips.php' );
@@ -130,7 +105,6 @@ class GFStripe {
 			else if ( in_array( RG_CURRENT_PAGE, array( 'admin-ajax.php' ) ) ) {
 
 				//loading data class
-				//require_once(self::get_base_path() . "/data.php");
 				require_once( GRAVITYFORMS_STRIPE_PATH . '/data.php' );
 
 				add_action( 'wp_ajax_gf_stripe_update_feed_active', array( 'GFStripe', 'gf_stripe_update_feed_active' ) );
@@ -168,16 +142,8 @@ class GFStripe {
 			add_filter( 'gform_validation', array( 'GFStripe', 'gform_validation' ), 10, 4 );
 			add_action( 'gform_after_submission', array( 'GFStripe', 'gform_after_submission' ), 10, 2 );
 
-			/* ManageWP premium update filters
-            add_filter( 'mwp_premium_update_notification', array('GFStripe', 'premium_update_push') );
-            add_filter( 'mwp_premium_perform_update', array('GFStripe', 'premium_update') );*/
 		}
 	}
-
-	/*public static function setup_cron(){
-       if( ! wp_next_scheduled( 'subscription_cron' ) )
-           wp_schedule_event( time(), 'daily', 'subscription_cron' );
-    }*/
 
 	public static function gf_stripe_update_feed_active() {
 		check_ajax_referer( 'gf_stripe_update_feed_active', 'gf_stripe_update_feed_active' );
@@ -185,93 +151,6 @@ class GFStripe {
 		$feed = GFStripeData::get_feed( $id );
 		GFStripeData::update_feed( $id, $feed[ "form_id" ], $_POST[ "is_active" ], $feed[ "meta" ] );
 	}
-
-	/*-------------- Automatic upgrade ---------------------------------------
-
-    //Integration with ManageWP
-    public static function premium_update_push( $premium_update ){
-
-        if( !function_exists( 'get_plugin_data' ) )
-            include_once( ABSPATH.'wp-admin/includes/plugin.php');
-
-        $update = GFCommon::get_version_info();
-        if( $update["is_valid_key"] == true && version_compare(self::$version, $update["version"], '<') ){
-            $plugin_data = get_plugin_data( __FILE__ );
-            $plugin_data['type'] = 'plugin';
-            $plugin_data['slug'] = self::$path;
-            $plugin_data['new_version'] = isset($update['version']) ? $update['version'] : false ;
-            $premium_update[] = $plugin_data;
-        }
-
-        return $premium_update;
-    }
-
-    //Integration with ManageWP
-    public static function premium_update( $premium_update ){
-
-        if( !function_exists( 'get_plugin_data' ) )
-            include_once( ABSPATH.'wp-admin/includes/plugin.php');
-
-        $update = GFCommon::get_version_info();
-        if( $update["is_valid_key"] == true && version_compare(self::$version, $update["version"], '<') ){
-            $plugin_data = get_plugin_data( __FILE__ );
-            $plugin_data['slug'] = self::$path;
-            $plugin_data['type'] = 'plugin';
-            $plugin_data['url'] = isset($update["url"]) ? $update["url"] : false; // OR provide your own callback function for managing the update
-
-            array_push($premium_update, $plugin_data);
-        }
-        return $premium_update;
-    }
-
-    public static function flush_version_info(){
-        if(!class_exists("RGAuthorizeNetUpgrade"))
-            require_once("plugin-upgrade.php");
-
-        RGAuthorizeNetUpgrade::set_version_info(false);
-    }
-
-    public static function plugin_row(){
-        if(!self::is_gravityforms_supported()){
-            $message = sprintf(__("Gravity Forms " . self::$min_gravityforms_version . " is required. Activate it now or %spurchase it today!%s", "gravityforms-stripe"), "<a href='http://www.gravityforms.com'>", "</a>");
-            RGAuthorizeNetUpgrade::display_plugin_message($message, true);
-        }
-        else{
-            $version_info = RGAuthorizeNetUpgrade::get_version_info(self::$slug, self::get_key(), self::$version);
-
-            if(!$version_info["is_valid_key"]){
-                $new_version = version_compare(self::$version, $version_info["version"], '<') ? __('There is a new version of Gravity Forms Stripe Add-On available.', 'gravityformsauthorizenet') .' <a class="thickbox" title="Gravity Forms Stripe Add-On" href="plugin-install.php?tab=plugin-information&plugin=' . self::$slug . '&TB_iframe=true&width=640&height=808">'. sprintf(__('View version %s Details', 'gravityformsauthorizenet'), $version_info["version"]) . '</a>. ' : '';
-                $message = $new_version . sprintf(__('%sRegister%s your copy of Gravity Forms to receive access to automatic upgrades and support. Need a license key? %sPurchase one now%s.', 'gravityformsauthorizenet'), '<a href="admin.php?page=gf_settings">', '</a>', '<a href="http://www.gravityforms.com">', '</a>') . '</div></td>';
-                RGAuthorizeNetUpgrade::display_plugin_message($message);
-            }
-        }
-    }
-
-    //Displays current version details on Plugin's page
-    public static function display_changelog(){
-        if($_REQUEST["plugin"] != self::$slug)
-            return;
-
-        //loading upgrade lib
-        if(!class_exists("RGAuthorizeNetUpgrade"))
-            require_once("plugin-upgrade.php");
-
-        RGAuthorizeNetUpgrade::display_changelog(self::$slug, self::get_key(), self::$version);
-    }
-
-    public static function check_update($update_plugins_option){
-        if(!class_exists("RGAuthorizeNetUpgrade"))
-            require_once("plugin-upgrade.php");
-
-        return RGAuthorizeNetUpgrade::check_update(self::$path, self::$slug, self::$url, self::$slug, self::get_key(), self::$version, $update_plugins_option);
-    }
-
-    private static function get_key(){
-        if(self::is_gravityforms_supported())
-            return GFCommon::get_key();
-        else
-            return "";
-    }*/
 
 	//------------------------------------------------------------------------
 
@@ -556,9 +435,6 @@ class GFStripe {
 //------------------------------------------------------
 	public static function settings_page() {
 
-		/*if(!class_exists("RGAuthorizeNetUpgrade"))
-            require_once("plugin-upgrade.php");*/
-
 		if ( isset( $_POST[ "uninstall" ] ) ) {
 			check_admin_referer( 'uninstall', 'gf_stripe_uninstall' );
 			self::uninstall();
@@ -788,13 +664,6 @@ class GFStripe {
 		<?php } ?>
 	</form>
 
-	<!--<form action="" method="post">
-                <div class="hr-divider"></div>
-                <div class="delete-alert">
-                    <input type="submit" name="cron" value="Cron" class="button"/>
-                </div>
-        </form>-->
-
 	<?php
 	}
 
@@ -866,16 +735,6 @@ class GFStripe {
 			require_once( GRAVITYFORMS_STRIPE_PATH . '/api/lib/Stripe.php' );
 	}
 
-	/*private static function get_product_field_options( $productFields, $selectedValue ) {
-		$options = "<option value=''>" . __( "Select a product", "gravityforms-stripe" ) . "</option>";
-		foreach ( $productFields as $field ) {
-			$label    = GFCommon::truncate_middle( $field[ "label" ], 30 );
-			$selected = $selectedValue == $field[ "id" ] ? "selected='selected'" : "";
-			$options .= "<option value='{$field["id"]}' {$selected}>{$label}</option>";
-		}
-
-		return $options;
-	}*/
 
 //------------------------------------------------------
 //------------- STATS PAGE ---------------------------
@@ -1498,7 +1357,6 @@ class GFStripe {
 
 			$config[ "form_id" ]        = absint( rgpost( 'gf_stripe_form' ) );
 			$config[ "meta" ][ "type" ] = rgpost( 'gf_stripe_type' );
-			//$config["meta"]["enable_receipt"] = rgpost('gf_stripe_enable_receipt');
 			$config[ "meta" ][ "update_post_action" ] = rgpost( 'gf_stripe_update_action' );
 
 			// stripe conditional
@@ -1509,13 +1367,6 @@ class GFStripe {
 
 			//subscription plan field
 			$config[ "meta" ][ "subscription_plan_field" ] = rgpost( 'gf_stripe_subscription_plan' );
-            /*$config["meta"]["billing_cycle_number"] = rgpost("gf_stripe_billing_cycle_number");
-            $config["meta"]["billing_cycle_type"] = rgpost("gf_stripe_billing_cycle_type");
-            $config["meta"]["recurring_times"] = rgpost("gf_stripe_recurring_times");
-            $config["meta"]["trial_period_enabled"] = rgpost('gf_stripe_trial_period');
-            $config["meta"]["trial_amount"] = rgpost('gf_stripe_trial_amount');
-            $config["meta"]["trial_period_number"] = rgpost('gf_stripe_trial_period_number');
-            $config["meta"]["recurring_retry"] = rgpost('gf_stripe_recurring_retry');*/
 
 			//-----------------
 
@@ -1625,66 +1476,6 @@ class GFStripe {
            <?php echo self::get_plan_options( $form, $config[ "meta" ][ "subscription_plan_field" ] ) ?>
          </select>
        </div>
-<!--
-       <div class="margin_vertical_10">
-                        <label class="left_header" for="gf_stripe_billing_cycle_number"><?php _e( 'Billing Cycle', 'gravityforms-stripe' ); ?> <?php gform_tooltip( 'stripe_billing_cycle' ) ?></label>
-                        <select id="gf_stripe_billing_cycle_number" name="gf_stripe_billing_cycle_number">
-                            <?php
-			for ( $i = 1; $i <= 100; $i ++ ) {
-				?>
-                                <option value="<?php echo $i ?>" <?php echo $i == $config[ "meta" ][ "billing_cycle_number" ] ? "selected='selected'" : '' ?>><?php echo $i ?></option>
-                            <?php
-			}
-			?>
-                        </select>&nbsp;
-                        <select id="gf_stripe_billing_cycle_type" name="gf_stripe_billing_cycle_type" onchange="SetPeriodNumber('#gf_stripe_billing_cycle_number', jQuery(this).val());">
-                            <option value="M" <?php echo 'M' == $config[ "meta" ][ "billing_cycle_type" ] ? "selected='selected'" : "" ?>><?php _e( 'month(s)', 'gravityforms-stripe' ) ?></option>
-                            <option value="Y" <?php echo 'Y' == $config[ "meta" ][ "billing_cycle_type" ] || strlen( $config[ "meta" ][ "billing_cycle_type" ] ) == 0 ? "selected='selected'" : "" ?>><?php _e( 'year(s)', 'gravityforms-stripe' ) ?></option>
-                        </select>
-                    </div>
-
-       <div class="margin_vertical_10">
-                        <label class="left_header" for="gf_stripe_recurring_times"><?php _e( 'Recurring Times', 'gravityforms-stripe' ); ?> <?php gform_tooltip( 'stripe_recurring_times' ) ?></label>
-                        <select id="gf_stripe_recurring_times" name="gf_stripe_recurring_times">
-                            <option><?php _e( 'Infinite', 'gravityforms-stripe' ) ?></option>
-                            <?php
-			for ( $i = 2; $i <= 100; $i ++ ) {
-				$selected = ( $i == $config[ "meta" ][ "recurring_times" ] ) ? 'selected="selected"' : '';
-				?>
-                                <option value="<?php echo $i ?>" <?php echo $selected; ?>><?php echo $i ?></option>
-                                <?php
-			}
-			?>
-                        </select>&nbsp;&nbsp;
-
-                    </div>
-
-       <div class="margin_vertical_10">
-                        <label class="left_header" for="gf_stripe_trial_period"><?php _e( 'Trial Period', 'gravityforms-stripe' ); ?> <?php gform_tooltip( 'stripe_trial_period_enable' ) ?></label>
-                        <input type="checkbox" name="gf_stripe_trial_period" id="gf_stripe_trial_period" value="1" onclick="if(jQuery(this).is(':checked')) jQuery('#stripe_trial_period_container').show('slow'); else jQuery('#stripe_trial_period_container').hide('slow');" <?php echo rgars( $config, "meta/trial_period_enabled" ) ? "checked='checked'" : ""?> />
-                        <label class="inline" for="gf_stripe_trial_period"><?php _e( 'Enable', 'gravityforms-stripe' ); ?></label>
-                    </div>
-
-       <div id="stripe_trial_period_container" <?php echo rgars( $config, 'meta/trial_period_enabled' ) ? '' : "style='display:none;'" ?>>
-                        <div class="margin_vertical_10">
-                            <label class="left_header" for="gf_stripe_trial_amount"><?php _e( 'Trial Amount', 'gravityforms-stripe' ); ?> <?php gform_tooltip( 'stripe_trial_amount' ) ?></label>
-                            <input type="text" name="gf_stripe_trial_amount" id="gf_stripe_trial_amount" value="<?php echo $config[ "meta" ][ "trial_amount" ] ?>" onchange="FormatCurrency(this);"/>
-                        </div>
-                        <div class="margin_vertical_10">
-                            <label class="left_header" for="gf_stripe_trial_period_number"><?php _e( 'Trial Recurring Times', 'gravityforms-stripe' ); ?> <?php gform_tooltip( 'stripe_trial_period' ) ?></label>
-                            <select id="gf_stripe_trial_period_number" name="gf_stripe_trial_period_number">
-                                <?php
-			for ( $i = 1; $i <= 99; $i ++ ) {
-				?>
-                                    <option value="<?php echo $i ?>" <?php echo rgars( $config, 'meta/trial_period_number' ) == $i ? "selected='selected'" : '' ?>><?php echo $i ?></option>
-                                <?php
-			}
-			?>
-                            </select>
-                        </div>
-
-                    </div>
-			-->
     </div>
 
 		<div class="margin_vertical_10">
@@ -1705,10 +1496,6 @@ class GFStripe {
 					class="left_header"><?php _e( 'Options', 'gravityforms-stripe' ); ?> <?php gform_tooltip( 'stripe_options' ) ?></label>
 
 			<ul style="overflow:hidden;">
-				<!--<li id="stripe_enable_receipt">
-                            <input type="checkbox" name="gf_stripe_enable_receipt" id="gf_stripe_enable_receipt" <?php echo rgar( $config[ "meta" ], 'enable_receipt' ) ? "checked='checked'" : "value='1'" ?> />
-                            <label class="inline" for="gf_stripe_enable_receipt"><?php _e( 'Send Stripe email receipt.', 'gravityforms-stripe' ); ?> <?php gform_tooltip( 'stripe_disable_user_notification' ) ?></label>
-                        </li>-->
 				<?php
 				$display_post_fields = ! empty( $form ) ? GFCommon::has_post_field( $form[ "fields" ] ) : false;
 				?>
@@ -1797,15 +1584,11 @@ class GFStripe {
 	</div>
 
 	<script type="text/javascript">
-		/*jQuery(document).ready(function () {
-			SetPeriodNumber('#gf_stripe_billing_cycle_number', jQuery("#gf_stripe_billing_cycle_type").val());
-		});*/
 
 		function SelectType(type) {
 			jQuery("#stripe_field_group").slideUp();
 
 			jQuery("#stripe_field_group input[type=\"text\"], #stripe_field_group select").val("");
-			//jQuery("#gf_stripe_trial_period_type, #gf_stripe_billing_cycle_type").val("M");
 
 			jQuery("#stripe_field_group input:checked").attr("checked", false);
 
@@ -1876,8 +1659,6 @@ class GFStripe {
 				jQuery("#stripe_post_update_action").hide();
 			}
 
-			//SetPeriodNumber('#gf_stripe_billing_cycle_number', jQuery("#gf_stripe_billing_cycle_type").val());
-
 			//Calling callback functions
 			jQuery(document).trigger('stripeFormSelected', [form]);
 
@@ -1889,26 +1670,6 @@ class GFStripe {
 			jQuery("#stripe_wait").hide();
 		}
 
-		/*function SetPeriodNumber(element, type) {
-			var prev = jQuery(element).val();
-
-			var min = 1;
-			var max = 0;
-			switch (type) {
-				case "Y" :
-					max = 1;
-					break;
-				case "M" :
-					max = 12;
-					break;
-			}
-			var str = "";
-			for (var i = min; i <= max; i++) {
-				var selected = prev == i ? "selected='selected'" : "";
-				str += "<option value='" + i + "' " + selected + ">" + i + "</option>";
-			}
-			jQuery(element).html(str);
-		}*/
 
 		function GetFieldsByType(types) {
 			var fields = new Array();
@@ -2051,102 +1812,6 @@ class GFStripe {
 
 		die( "EndSelectForm(" . GFCommon::json_encode( $form ) . ", '" . str_replace( "'", "\'", $customer_fields ) . "', '" . str_replace( "'", "\'", $subscription_plan_fields ) . "');" );
 	}
-
-	/*public static function gform_editor_js() {
-		?>
-		<script type="text/javascript">
-			jQuery('select#product_field_type option').first().after('<option value="stripe-subscription"><?php _e("Subscription", "gravityforms-stripe"); ?></option>');
-			//var subscriptionFieldSetting = '"stripe-subscription" :           ".conditional_logic_field_setting, .prepopulate_field_setting, .error_message_setting, .label_setting, .admin_label_setting, .choices_setting, .rules_setting, .visibility_setting, .duplicate_setting, .description_setting, .css_class_setting, .other_choice_setting"';
-
-			//fieldSettings += "," + subscriptionFieldSetting;
-			var fieldSettings = {
-			    "html" :            ".label_setting, .content_setting, .conditional_logic_field_setting, .disable_margins_setting, .css_class_setting",
-			    "hidden" :          ".prepopulate_field_setting, .label_setting, .default_value_setting",
-			    "section" :         ".conditional_logic_field_setting, .label_setting, .description_setting, .visibility_setting, .css_class_setting",
-			    "page" :            ".next_button_setting, .previous_button_setting, .css_class_setting, .conditional_logic_page_setting, .conditional_logic_nextbutton_setting",
-			    "text" :            ".conditional_logic_field_setting, .prepopulate_field_setting, .error_message_setting, .label_setting, .admin_label_setting, .size_setting, .input_mask_setting, .maxlen_setting, .password_field_setting, .rules_setting, .visibility_setting, .duplicate_setting, .default_value_setting, .description_setting, .css_class_setting",
-			    "creditcard" :      ".conditional_logic_field_setting, .force_ssl_field_setting, .credit_card_style_setting, .error_message_setting, .label_setting, .admin_label_setting, .rules_setting, .description_setting, .css_class_setting, .credit_card_setting",
-			    "website" :         ".conditional_logic_field_setting, .prepopulate_field_setting, .error_message_setting, .label_setting, .admin_label_setting, .size_setting, .rules_setting, .visibility_setting, .duplicate_setting, .default_value_setting, .description_setting, .css_class_setting",
-			    "phone" :           ".conditional_logic_field_setting, .prepopulate_field_setting, .error_message_setting, .label_setting, .admin_label_setting, .size_setting, .rules_setting, .duplicate_setting, .visibility_setting, .default_value_setting, .description_setting, .phone_format_setting, .css_class_setting",
-			    "number" :          ".conditional_logic_field_setting, .prepopulate_field_setting, .error_message_setting, .label_setting, .admin_label_setting, .size_setting, .number_format_setting, .range_setting, .rules_setting, .visibility_setting, .duplicate_setting, .default_value_setting, .description_setting, .css_class_setting",
-			    "date" :            ".conditional_logic_field_setting, .prepopulate_field_setting, .error_message_setting, .label_setting, .admin_label_setting, .rules_setting, .date_input_type_setting, .duplicate_setting, .visibility_setting, .date_format_setting, .default_value_setting, .description_setting, .css_class_setting",
-			    "time" :            ".conditional_logic_field_setting, .prepopulate_field_setting, .error_message_setting, .label_setting, .admin_label_setting, .time_format_setting, .rules_setting, .duplicate_setting, .visibility_setting, .description_setting, .css_class_setting",
-			    "textarea" :        ".conditional_logic_field_setting, .prepopulate_field_setting, .error_message_setting, .label_setting, .admin_label_setting, .maxlen_setting, .size_setting, .rules_setting, .visibility_setting, .duplicate_setting, .default_value_textarea_setting, .description_setting, .css_class_setting",
-			    "select" :          ".conditional_logic_field_setting, .prepopulate_field_setting, .error_message_setting, .enable_enhanced_ui_setting, .label_setting, .admin_label_setting, .size_setting, .choices_setting, .rules_setting,  .duplicate_setting, .visibility_setting, .description_setting, .css_class_setting",
-			    "multiselect" :     ".conditional_logic_field_setting, .prepopulate_field_setting, .error_message_setting, .enable_enhanced_ui_setting, .label_setting, .admin_label_setting, .size_setting, .choices_setting, .rules_setting,  .duplicate_setting, .visibility_setting, .description_setting, .css_class_setting",
-			    "checkbox" :        ".conditional_logic_field_setting, .prepopulate_field_setting, .error_message_setting, .label_setting, .admin_label_setting, .choices_setting, .rules_setting, .visibility_setting, .description_setting, .css_class_setting",
-			    "radio" :           ".conditional_logic_field_setting, .prepopulate_field_setting, .error_message_setting, .label_setting, .admin_label_setting, .choices_setting, .rules_setting, .visibility_setting, .duplicate_setting, .description_setting, .css_class_setting, .other_choice_setting",
-			    "name" :            ".conditional_logic_field_setting, .prepopulate_field_setting, .error_message_setting, .label_setting, .admin_label_setting, .name_format_setting, .rules_setting, .visibility_setting, .description_setting, .css_class_setting",
-			    "address" :         ".conditional_logic_field_setting, .prepopulate_field_setting, .error_message_setting, .label_setting, .admin_label_setting, .address_setting, .rules_setting, .description_setting, .visibility_setting, .css_class_setting",
-			    "fileupload" :      ".conditional_logic_field_setting, .error_message_setting, .label_setting, .admin_label_setting, .rules_setting, .file_extensions_setting, .visibility_setting, .description_setting, .css_class_setting",
-			    "email" :           ".conditional_logic_field_setting, .prepopulate_field_setting, .error_message_setting, .label_setting, .email_confirm_setting, .admin_label_setting, .size_setting, .rules_setting, .visibility_setting, .duplicate_setting, .default_value_setting, .description_setting, .css_class_setting",
-			    "post_title" :      ".conditional_logic_field_setting, .prepopulate_field_setting, .error_message_setting, .admin_label_setting, .post_title_template_setting, .post_status_setting, .post_category_setting, .post_author_setting, .label_setting, .size_setting, .rules_setting, .visibility_setting, .default_value_setting, .description_setting, .css_class_setting, .post_format_setting",
-			    "post_content" :    ".conditional_logic_field_setting, .prepopulate_field_setting, .error_message_setting, .admin_label_setting, .maxlen_setting, .post_content_template_setting, .post_status_setting, .post_category_setting, .post_author_setting, .label_setting, .size_setting, .rules_setting, .visibility_setting, .default_value_textarea_setting, .description_setting, .css_class_setting, .post_format_setting",
-			    "post_excerpt" :    ".conditional_logic_field_setting, .prepopulate_field_setting, .error_message_setting, .admin_label_setting, .maxlen_setting, .post_status_setting, .post_category_setting, .post_author_setting, .label_setting, .size_setting, .rules_setting, .visibility_setting, .default_value_textarea_setting, .description_setting, .css_class_setting",
-			    "post_tags" :       ".conditional_logic_field_setting, .prepopulate_field_setting, .error_message_setting, .admin_label_setting, .label_setting, .post_tag_type_setting, .size_setting, .rules_setting, .visibility_setting, .default_value_setting, .description_setting, .css_class_setting",
-			    "post_category" :   ".conditional_logic_field_setting, .prepopulate_field_setting, .error_message_setting, .admin_label_setting, .post_category_checkbox_setting, .post_category_initial_item_setting, .label_setting, .size_setting, .rules_setting, .visibility_setting, .duplicate_setting, .description_setting, .css_class_setting, .post_category_field_type_setting",
-			    "post_image" :      ".conditional_logic_field_setting, .error_message_setting, .admin_label_setting, .post_image_setting, .label_setting, .rules_setting, .description_setting, .css_class_setting, .post_image_featured_image",
-			    "captcha"   :       ".captcha_type_setting, .captcha_size_setting, .captcha_fg_setting, .captcha_bg_setting, .conditional_logic_field_setting, .captcha_language_setting, .captcha_theme_setting, .error_message_setting, .label_setting, .description_setting, .css_class_setting",
-			    "product"   :       ".product_field_type_setting, .conditional_logic_field_setting, .prepopulate_field_setting, .label_setting, .admin_label_setting, .description_setting, .css_class_setting",
-			    "singleproduct" :   ".base_price_setting, .disable_quantity_setting, .rules_setting, .duplicate_setting",
-			    "price" :           ".rules_setting, .duplicate_setting",
-			    "hiddenproduct" :   ".base_price_setting",
-			    "list" :            ".columns_setting, .maxrows_setting, .add_icon_url_setting, .delete_icon_url_setting, .conditional_logic_field_setting, .prepopulate_field_setting, .error_message_setting, .label_setting, .admin_label_setting, .rules_setting, .visibility_setting, .description_setting, .css_class_setting",
-			    "shipping"   :      ".shipping_field_type_setting, .conditional_logic_field_setting, .prepopulate_field_setting, .label_setting, .admin_label_setting, .description_setting, .css_class_setting",
-			    "singleshipping":   ".base_price_setting",
-			    "option"    :       ".product_field_setting, .option_field_type_setting, .conditional_logic_field_setting, .prepopulate_field_setting, .label_setting, .admin_label_setting, .default_value_setting, .description_setting, .css_class_setting",
-			    "quantity"  :       ".product_field_setting, .quantity_field_type_setting, .conditional_logic_field_setting, .prepopulate_field_setting, .label_setting, .admin_label_setting, .default_value_setting, .description_setting, .css_class_setting",
-			    "donation"  :       ".conditional_logic_field_setting, .donation_field_type_setting, .prepopulate_field_setting, .error_message_setting, .label_setting, .admin_label_setting, .rules_setting, .default_value_setting, .description_setting, .css_class_setting",
-			    "total"     :       ".conditional_logic_field_setting, .label_setting, .admin_label_setting, .description_setting, .css_class_setting",
-			    "post_custom_field" : ".conditional_logic_field_setting, .prepopulate_field_setting, .error_message_setting, .post_custom_field_setting, .post_custom_field_type_setting, .label_setting, .size_setting, .rules_setting, .visibility_setting, .duplicate_setting, .default_value_setting, .description_setting, .css_class_setting",
-			    "password" :        ".conditional_logic_field_setting, .error_message_setting, .label_setting, .admin_label_setting, .rules_setting, .duplicate_setting, .description_setting, .css_class_setting, .password_strength_setting",
-				"stripe-subscription" :           ".conditional_logic_field_setting, .prepopulate_field_setting, .error_message_setting, .label_setting, .admin_label_setting, .choices_setting, .rules_setting, .visibility_setting, .duplicate_setting, .description_setting, .css_class_setting, .other_choice_setting"
-
-			}
-		</script>
-		<?php
-	}*/
-
-	/*public static function gform_editor_js_set_default_values() {
-		//get Stripe plans
-		self::include_api();
-		Stripe::setApiKey( self::get_api_key( 'secret' ) );
-		try {
-			$response = Stripe_Plan::all();
-			if ( !empty( $response['data'] ) ) {
-				$plans = array();
-				foreach ( $response['data'] as $plan ) {
-					$plans[] = array( 'name' => $plan['name'], 'id' => $plan['id'], 'amount' => $plan['amount'] );
-				}
-			}
-		}
-		catch( Exception $e ){
-
-		}
-
-		//setup choices
-		?>
-			case "stripe-subscription":
-
-	      field.inputs = null;
-	      if(!field.choices){
-	        field.choices = new Array(
-					<?php
-						$num_of_plans = count( $plans );
-						$i = 1;
-						foreach ( $plans as $plan ) {
-					?>
-								new Choice("<?php echo $plan['name'] ?>", "<?php echo $plan['id'] ?>", "<?php echo $plan['amount'] / 100 ?>")
-						<?php if ( $i < $num_of_plans ) { ?>,
-					<?php }
-							$i++;
-							}
-					?>);
-	      }
-
-			break;
-		<?php
-	}*/
 
 	public static function add_permissions() {
 		global $wp_roles;
@@ -2533,33 +2198,6 @@ class GFStripe {
 
 		//create charge
 		self::$log->LogDebug( 'Creating the charge' );
-		/*$settings = get_option( 'gf_stripe_settings' );
-		$mode     = rgar( $settings, 'mode' );
-		switch ( $mode ) {
-			case 'test':
-				$secret_key = esc_attr( rgar( $settings, 'test_secret_key' ) );
-				break;
-			case 'live':
-				$secret_key = esc_attr( rgar( $settings, 'live_secret_key' ) );
-				break;
-			default:
-				//something is wrong
-				$credit_card_page = 0;
-				foreach ( $validation_result[ "form" ][ "fields" ] as &$field ) {
-					if ( $field[ "type" ] == 'creditcard' ) {
-						$field[ "failed_validation" ]  = true;
-						$field[ "validation_message" ] = 'This form cannot process payments. Please contact site owner';
-						$credit_card_page              = $field[ "pageNumber" ];
-						break;
-					}
-
-				}
-				$validation_result[ "is_valid" ] = false;
-
-				GFFormDisplay::set_current_page( $validation_result[ "form" ][ "id" ], $credit_card_page );
-
-				return $validation_result;
-		}*/
 		self::include_api();
 		Stripe::setApiKey( self::get_api_key( 'secret' ) );
 		try {
@@ -2612,104 +2250,6 @@ class GFStripe {
 
 	}
 
-	/*private static function start_subscription( $config, $validation_result ) {
-
-		$form = $validation_result[ "form" ];
-
-		self::$log->LogDebug( "Starting subscription for form: {$form["id"]}" );
-
-		$form_data      = self::get_form_data( $form, $config );
-		$transaction    = self::get_initial_transaction( $form_data, $config );
-		$regular_amount = $form_data[ "amount" ];
-
-		//getting trial information
-		$trial_info = self::get_trial_info( $config );
-
-		if ( $trial_info[ "trial_enabled" ] && $trial_info[ "trial_amount" ] == 0 ) {
-			self::$log->LogDebug( 'Free trial. Authorizing credit card' );
-
-			//Free trial. Just authorize the credit card to make sure the information is correct
-			$aim_response = $transaction->authorizeOnly();
-		}
-		else if ( $trial_info[ "trial_enabled" ] ) {
-
-			self::$log->LogDebug( 'Paid trial. Capturing trial amount' );
-
-			//Paid trial. Capture trial amount
-			$transaction->amount = $trial_info[ "trial_amount" ];
-			$aim_response        = $transaction->authorizeAndCapture();
-		}
-		else {
-
-			self::$log->LogDebug( 'No trial. Capturing payment for first cycle' );
-
-			//No trial. Capture payment for first cycle
-			$aim_response = $transaction->authorizeAndCapture();
-		}
-
-		self::$log->LogDebug( print_r( $aim_response, true ) );
-
-		//If first transaction was successfull, move on to create subscription.
-		if ( $aim_response->approved ) {
-
-			//Create subscription.
-			$subscription = self::get_subscription( $config, $form_data, $trial_info );
-
-			//Send subscription request.
-			$request = self::get_arb();
-
-			self::$log->LogDebug( "Sending create subscription request" );
-
-			$arb_response = $request->createSubscription( $subscription );
-
-			self::$log->LogDebug( print_r( $arb_response, true ) );
-
-			if ( $arb_response->isOk() ) {
-				self::$log->LogDebug( "Subscription created successfully" );
-
-				$subscription_id            = $arb_response->getSubscriptionId();
-				self::$transaction_response = array(
-					"transaction_id"   => $subscription_id,
-					"amount"           => $form_data[ "amount" ],
-					"transaction_type" => 2,
-					"regular_amount"   => $regular_amount );
-				if ( $trial_info[ "trial_enabled" ] )
-					self::$transaction_response[ "trial_amount" ] = $trial_info[ "trial_amount" ];
-
-				$validation_result[ "is_valid" ] = true;
-				return $validation_result;
-			}
-			else
-			{
-				$void = self::get_aim();
-				$void->setFields(
-					array(
-							 'amount'   => $form_data[ "amount" ],
-							 'card_num' => $form_data[ "card_number" ],
-							 'trans_id' => $aim_response->transaction_id,
-					)
-				);
-
-				self::$log->LogError( "Subscription failed. Voiding first payment." );
-				self::$log->LogError( print_r( $arb_response, true ) );
-
-				$void_response = $void->Void();
-
-				self::$log->LogDebug( print_r( $void_response, true ) );
-
-				return self::set_validation_result( $validation_result, $_POST, $arb_response, "arb" );
-			}
-		}
-		else
-		{
-			self::$log->LogError( "Initial payment failed. Aborting subscription." );
-			self::$log->LogError( print_r( $aim_response, true ) );
-
-			// First payment was not succesfull, subscription was not created, need to display error message
-			return self::set_validation_result( $validation_result, $_POST, $aim_response, "aim" );
-		}
-	}*/
-
 	private static function start_subscription( $config, $validation_result ) {
 
 			$form = $validation_result[ 'form' ];
@@ -2718,44 +2258,6 @@ class GFStripe {
 
 			$form_data      = self::get_form_data( $form, $config );
 			if ( isset( $form_data[ 'plan' ] ) ) {
-				/*$transaction    = self::get_initial_transaction( $form_data, $config );
-				//$regular_amount = $form_data[ 'amount' ];
-
-			//getting trial information
-			$trial_info = self::get_trial_info( $config );
-
-			if ( $trial_info[ "trial_enabled" ] && $trial_info[ "trial_amount" ] == 0 ) {
-				self::$log->LogDebug( 'Free trial. Authorizing credit card' );
-
-				//Free trial. Just authorize the credit card to make sure the information is correct
-				$aim_response = $transaction->authorizeOnly();
-			}
-			else if ( $trial_info[ "trial_enabled" ] ) {
-
-				self::$log->LogDebug( 'Paid trial. Capturing trial amount' );
-
-				//Paid trial. Capture trial amount
-				$transaction->amount = $trial_info[ "trial_amount" ];
-				$aim_response        = $transaction->authorizeAndCapture();
-			}
-			else {
-
-				//self::$log->LogDebug( 'No trial. Capturing payment for first cycle' );
-
-				//No trial. Capture payment for first cycle
-				//$aim_response = $transaction->authorizeAndCapture();
-			//}
-
-			//self::$log->LogDebug( print_r( $aim_response, true ) );
-
-			//If first transaction was successful, move on to create subscription.
-			//if ( $aim_response->approved ) {
-
-				//Create subscription.
-				//$subscription = self::get_subscription( $config, $form_data, $trial_info );
-
-				//Send subscription request.
-				//$request = self::get_arb();*/
 
 				self::$log->LogDebug( "Sending create subscription request" );
 
@@ -2806,10 +2308,6 @@ class GFStripe {
 					//self::$log->LogDebug(print_r($response, true));
 					self::$log->LogDebug( "Subscription created successfully. ID: {$subscription[ 'customer_id' ]} - Amount: {$subscription[ 'plan' ][ 'amount' ]}" );
 
-					/*self::$transaction_response = array(
-						'transaction_id'   => $response[ 'id' ],
-						'amount'           => $response[ 'amount' ],
-						'transaction_type' => 1 );*/
 					try{
 						$last_invoice = Stripe_Invoice::all( array(
 																											'customer' => $subscription[ 'customer_id' ],
@@ -2831,15 +2329,12 @@ class GFStripe {
 
 					$subscription[ 'next_payment' ][ 'invoice_id' ] = empty( $upcoming_invoice ) ? $upcoming_invoice : $upcoming_invoice[ 'date' ];
 
-					//$subscription_id            = $subscription[ 'customer_id' ];
 					self::$transaction_response = array(
 																					'transaction_id'   => empty( $last_invoice ) ? $subscription[ 'customer_id' ] : $last_invoice[ 'data' ][ 0 ][ 'id' ],
 																					'amount'           => $subscription[ 'plan' ][ 'amount' ],
 																					'transaction_type' => 2,
 																					'subscription'   => $subscription
 																				);
-																		/*if ( $trial_info[ 'trial_enabled' ] )
-																			self::$transaction_response[ 'trial_amount' ] = $trial_info[ 'trial_amount' ];*/
 
 					$validation_result[ 'is_valid' ] = true;
 					return $validation_result;
@@ -2852,50 +2347,6 @@ class GFStripe {
 				return self::set_validation_result( $validation_result, $_POST, $error_message );
 			}
 
-				/*if ( $arb_response->isOk() ) {
-					self::$log->LogDebug( "Subscription created successfully" );
-
-					$subscription_id            = $arb_response->getSubscriptionId();
-					self::$transaction_response = array(
-						"transaction_id"   => $subscription_id,
-						"amount"           => $form_data[ "amount" ],
-						"transaction_type" => 2,
-						"regular_amount"   => $regular_amount );
-					if ( $trial_info[ "trial_enabled" ] )
-						self::$transaction_response[ "trial_amount" ] = $trial_info[ "trial_amount" ];
-
-					$validation_result[ "is_valid" ] = true;
-					return $validation_result;
-				}*/
-				/*else
-				{
-					$void = self::get_aim();
-					$void->setFields(
-						array(
-								 'amount'   => $form_data[ "amount" ],
-								 'card_num' => $form_data[ "card_number" ],
-								 'trans_id' => $aim_response->transaction_id,
-						)
-					);
-
-					//self::$log->LogError( "Subscription failed. Voiding first payment." );
-					//self::$log->LogError( print_r( $arb_response, true ) );
-
-					//$void_response = $void->Void();
-
-					//self::$log->LogDebug( print_r( $void_response, true ) );
-
-					//return self::set_validation_result( $validation_result, $_POST, $arb_response, "arb" );
-				}*/
-			//}
-			/*else
-			{
-				self::$log->LogError( "Initial payment failed. Aborting subscription." );
-				self::$log->LogError( print_r( $aim_response, true ) );
-
-				// First payment was not succesfull, subscription was not created, need to display error message
-				return self::set_validation_result( $validation_result, $_POST, $aim_response, "aim" );
-			}*/
 		}
 
 	private static function get_form_data( $form, $config ) {
@@ -2914,25 +2365,12 @@ class GFStripe {
 		$form_data[ 'state' ]      	= rgpost( 'input_' . str_replace( '.', '_', $config[ 'meta' ][ 'customer_fields' ][ 'state' ] ) );
 		$form_data[ 'zip' ]        	= rgpost( 'input_' . str_replace( '.', '_', $config[ 'meta' ][ 'customer_fields' ][ 'zip' ] ) );
 		$form_data[ 'country' ]    	= rgpost( 'input_' . str_replace( '.', '_', $config[ 'meta' ][ 'customer_fields' ][ 'country' ] ) );
-		/*$card_field = self::get_creditcard_field($form);
-        $form_data["card_number"] = rgpost("input_{$card_field["id"]}_1");
-        $form_data["expiration_date"] = rgpost("input_{$card_field["id"]}_2");
-        $form_data["security_code"] = rgpost("input_{$card_field["id"]}_3");
-        $form_data["card_name"] = rgpost("input_{$card_field["id"]}_5");
-        $names = explode(" ", $form_data["card_name"]);
-        $form_data["first_name"] = rgar($names,0);
-        $form_data["last_name"] = "";
-        if(count($names) > 0){
-            unset($names[0]);
-            $form_data["last_name"] = implode(" ", $names);
-        }*/
 		$form_data[ "credit_card" ] = rgpost( 'stripeToken' );
 		if ( array_key_exists( 'subscription_plan_field', $config[ 'meta' ] ) &&  ( 1 == sizeof( $products[ 'products' ] ) ) && array_key_exists( 'value', $products[ 'products' ][ $config[ 'meta' ][ 'subscription_plan_field' ] ] ) ) {
 			$form_data[ 'plan' ] = $products[ 'products' ][ $config[ 'meta' ][ 'subscription_plan_field' ] ][ 'value' ];
 		}
 
 		$order_info = self::get_order_info( $products, rgar( $config[ "meta" ], 'subscription_plan_field' ) );
-		//$order_info = self::get_order_info( $products );
 
 		$form_data[ "line_items" ] = $order_info[ "line_items" ];
 		$form_data[ "amount" ]     = $order_info[ "amount" ];
@@ -2967,13 +2405,11 @@ class GFStripe {
 			if ( ! empty( $options ) )
 				$description = __( 'options: ', 'gravityforms-stripe' ) . ' ' . implode( ', ', $options );
 
-			//$line_items[] = array("item_id" =>'Item ' . $item, "item_name"=>$product["name"], "item_description" =>$description, "item_quantity" =>$quantity, "item_unit_price"=>$product_total, "item_taxable"=>"Y");
 			$line_items[ ] = "(" . $quantity . ")\t" . $product[ "name" ] . "\t" . $description . "\tx\t$" . $product_total;
 			$item ++;
 		}
 
 		if ( ! empty( $products[ "shipping" ][ "name" ] )  && !is_numeric( $subscription_plan_field ) ) {
-			//$line_items[] = array("item_id" =>'Item ' . $item, "item_name"=>$products["shipping"]["name"], "item_description" =>"", "item_quantity" =>1, "item_unit_price"=>$products["shipping"]["price"], "item_taxable"=>"Y");
 			$line_items[ ] = $item . "\t" . $products[ "shipping" ][ "name" ] . "\t" . "1" . "\t" . $products[ "shipping" ][ "price" ];
 			$amount += $products[ "shipping" ][ "price" ];
 		}
@@ -2983,91 +2419,6 @@ class GFStripe {
 			'line_items' => $line_items );
 	}
 
-	/*private static function get_initial_transaction( $form_data, $config ) {
-
-		// processing products and services single transaction and first payment of subscription transaction
-		$transaction = self::get_aim();
-
-		$transaction->amount           = $form_data[ "amount" ];
-		$transaction->card_num         = $form_data[ "card_number" ];
-		$exp_date                      = str_pad( $form_data[ "expiration_date" ][ 0 ], 2, "0", STR_PAD_LEFT ) . "-" . $form_data[ "expiration_date" ][ 1 ];
-		$transaction->exp_date         = $exp_date;
-		$transaction->card_code        = $form_data[ "security_code" ];
-		$transaction->first_name       = $form_data[ "first_name" ];
-		$transaction->last_name        = $form_data[ "last_name" ];
-		$transaction->address          = $form_data[ "address1" ];
-		$transaction->city             = $form_data[ "city" ];
-		$transaction->state            = $form_data[ "state" ];
-		$transaction->zip              = $form_data[ "zip" ];
-		$transaction->country          = $form_data[ "country" ];
-		$transaction->email            = $form_data[ "email" ];
-		$transaction->email_customer   = "true";
-		$transaction->description      = $form_data[ "form_title" ];
-		$transaction->email_customer   = $config[ "meta" ][ "enable_receipt" ] == 1 ? "true" : "false";
-		$transaction->duplicate_window = 5;
-
-		foreach ( $form_data[ "line_items" ] as $line_item ) {
-			//truncating line item name to 31 characters (Stripe limit)
-			if ( ! empty( $line_item[ "item_name" ] ) && strlen( $line_item[ "item_name" ] ) > 31 )
-				$line_item[ "item_name" ] = substr( $line_item[ "item_name" ], 0, 31 );
-
-			//truncating line item description to 255 characters (Stripe limit)
-			if ( ! empty( $line_item[ "item_description" ] ) && strlen( $line_item[ "item_description" ] ) > 255 )
-				$line_item[ "item_description" ] = substr( $line_item[ "item_description" ], 0, 255 );
-
-			$transaction->addLineItem( $line_item[ "item_id" ], $line_item[ "item_name" ], $line_item[ "item_description" ], $line_item[ "item_quantity" ], $line_item[ "item_unit_price" ], $line_item[ "item_taxable" ] );
-		}
-
-		return $transaction;
-	}*/
-
-	/*private static function get_subscription( $config, $form_data, $trial_info ) {
-
-		$subscription = new AuthorizeNet_Subscription;
-
-		$total_occurrences = $config[ "meta" ][ "recurring_times" ] == "Infinite" ? "9999" : $config[ "meta" ][ "recurring_times" ];
-		if ( $total_occurrences <> "9999" )
-			$total_occurrences += $trial_info[ "trial_occurrences" ];
-
-		$interval_length = $config[ "meta" ][ "billing_cycle_number" ];
-		$interval_unit   = $config[ "meta" ][ "billing_cycle_type" ] == "D" ? "days" : "months";
-
-		//setting subscription start date
-		$is_free_trial = $trial_info[ "trial_enabled" ] && $trial_info[ "trial_amount" ] == 0;
-		if ( $is_free_trial ) {
-			$subscription_start_date = gmdate( "Y-m-d" );
-		}
-		else {
-			//first payment has been made already, so start subscription on the next cycle
-			$subscription_start_date = gmdate( "Y-m-d", strtotime( "+ " . $interval_length . $interval_unit ) );
-
-			//removing one from total occurrences because first payment has been made
-			$total_occurrences                 = $total_occurrences <> "9999" ? $total_occurrences - 1 : "9999";
-			$trial_info[ "trial_occurrences" ] = $trial_info[ "trial_enabled" ] ? $trial_info[ "trial_occurrences" ] - 1 : null;
-		}
-
-		//setting trial properties
-		if ( $trial_info[ "trial_enabled" ] ) {
-			$subscription->trialOccurrences = $trial_info[ "trial_occurrences" ];
-			$subscription->trialAmount      = $trial_info[ "trial_amount" ];
-		}
-
-		$subscription->name                     = $form_data[ "first_name" ] . " " . $form_data[ "last_name" ];
-		$subscription->intervalLength           = $interval_length;
-		$subscription->intervalUnit             = $interval_unit;
-		$subscription->startDate                = $subscription_start_date;
-		$subscription->totalOccurrences         = $total_occurrences;
-		$subscription->amount                   = $form_data[ "amount" ];
-		$subscription->creditCardCardNumber     = $form_data[ "card_number" ];
-		$exp_date                               = $form_data[ "expiration_date" ][ 1 ] . "-" . str_pad( $form_data[ "expiration_date" ][ 0 ], 2, "0", STR_PAD_LEFT );
-		$subscription->creditCardExpirationDate = $exp_date;
-		$subscription->creditCardCardCode       = $form_data[ "security_code" ];
-		$subscription->billToFirstName          = $form_data[ "first_name" ];
-		$subscription->billToLastName           = $form_data[ "last_name" ];
-
-		return $subscription;
-	}*/
-
 	public static function gform_after_submission( $entry, $form ) {
 		$entry_id = rgar( $entry, 'id' );
 
@@ -3076,7 +2427,6 @@ class GFStripe {
 			$currency            = GFCommon::get_currency();
 			$transaction_id      = self::$transaction_response[ 'transaction_id' ];
 			$transaction_type    = self::$transaction_response[ 'transaction_type' ];
-			//$amount = ( 'N/A' == $transaction_id ) ? self::$transaction_response[ 'amount' ] : ( self::$transaction_response[ 'amount' ] ) / 100;
 			$amount = self::$transaction_response[ 'amount' ];
 			$payment_date        = gmdate( 'Y-m-d H:i:s' );
 			$entry[ 'currency' ] = $currency;
@@ -3101,19 +2451,12 @@ class GFStripe {
 			$subscriber_id = '';
 			if ( '2' == $transaction_type ) {
 				$subscriber_id  = self::$transaction_response[ 'subscription' ][ 'customer_id' ];
-				/*$trial_amount   = rgar( self::$transaction_response, 'trial_amount' );
-				gform_update_meta( $entry[ 'id' ], 'subscription_regular_amount', $regular_amount );
-				gform_update_meta( $entry[ 'id' ], 'subscription_trial_amount', $trial_amount );*/
 				gform_update_meta( $entry[ 'id' ], 'subscription_amount', $amount );
 				gform_update_meta( $entry[ 'id' ], 'subscription_payment_count', '1' );
 				gform_update_meta( $entry[ 'id' ], 'subscription_payment_date', $payment_date );
 				gform_update_meta( $entry[ 'id' ], 'Stripe_subscription', self::$transaction_response[ 'subscription' ] );
-				//GFStripeData::insert_transaction( $entry[ 'id' ], 'payment', $subscriber_id, $transaction_id, $amount );
 			}
-			//else
-			//{
 			GFStripeData::insert_transaction( $entry[ 'id' ], 'payment', $subscriber_id, $transaction_id, $amount );
-			//}
 		}
 
 	}
@@ -3275,118 +2618,6 @@ class GFStripe {
 		return $validation_result;
 	}
 
-	/*public static function subscription_cron() {
-		// getting user information
-		$user_id   = 0;
-		$user_name = 'System';
-
-		//loading data lib
-		require_once( self::get_base_path() . '/data.php' );
-
-		// loading authorizenet api and getting credentials
-		self::include_api();
-
-		// getting all Stripe subscription feeds
-		$recurring_feeds = GFStripeData::get_feeds();
-		foreach ( $recurring_feeds as $feed )
-		{
-			// process renewals if Stripe feed is subscription feed
-			if ( "subscription" == $feed[ "meta" ][ "type" ] ) {
-				$form_id = $feed[ "form_id" ];
-
-				// getting billing cycle information
-				$billing_cycle_number = $feed[ "meta" ][ "billing_cycle_number" ];
-				$billing_cycle_type   = $feed[ "meta" ][ "billing_cycle_type" ];
-				$billing_cycle        = $billing_cycle_number;
-				if ( "M" == $billing_cycle_type )
-					$billing_cycle = $billing_cycle_number . " month";
-				else
-					$billing_cycle = $billing_cycle_number . " day";
-
-				$querytime = strtotime( gmdate( "Y-m-d" ) . "-" . $billing_cycle );
-				$querydate = gmdate( "Y-m-d", $querytime ) . " 00:00:00";
-
-				// finding leads with a late payment date
-				global $wpdb;
-				$results = $wpdb->get_results( "SELECT l.id, l.transaction_id, m.meta_value as payment_date
-                                                FROM {$wpdb->prefix}rg_lead l
-                                                INNER JOIN {$wpdb->prefix}rg_lead_meta m ON l.id = m.lead_id
-                                                WHERE form_id={$form_id}
-                                                AND payment_status = 'Active'
-                                                AND meta_key = 'subscription_payment_date'
-                                                AND meta_value < '{$querydate}'" );
-
-				foreach ( $results as $result )
-				{
-					$entry_id        = $result->id;
-					$subscription_id = $result->transaction_id;
-
-					$entry = RGFormsModel::get_lead( $entry_id );
-
-					// Get the subscription status
-					$status_request  = self::get_arb();
-					$status_response = $status_request->getSubscriptionStatus( $subscription_id );
-					$status          = $status_response->getSubscriptionStatus();
-
-					switch ( strtolower( $status ) ) {
-						case "active" :
-							// getting feed trial information
-							$trial_period_enabled     = $feed[ "meta" ][ "trial_period_enabled" ];
-							$trial_period_occurrences = $feed[ "meta" ][ "trial_period_number" ];
-
-							// finding payment date
-							$new_payment_time = strtotime( $result->payment_date . "+" . $billing_cycle );
-							$new_payment_date = gmdate( 'Y-m-d H:i:s', $new_payment_time );
-
-							// finding payment amount
-							$payment_count      = gform_get_meta( $entry_id, "subscription_payment_count" );
-							$new_payment_amount = gform_get_meta( $entry_id, "subscription_regular_amount" );
-							$new_payment_count  = $payment_count + 1;
-							if ( 1 == $trial_period_enabled ) {
-								if ( $trial_period_occurrences > $payment_count )
-									$new_payment_amount = gform_get_meta( $entry_id, "subscription_trial_amount" );
-							}
-
-							// update subscription payment and lead information
-							gform_update_meta( $entry_id, "subscription_payment_count", $new_payment_count );
-							gform_update_meta( $entry_id, "subscription_payment_date", $new_payment_date );
-							RGFormsModel::add_note( $entry_id, $user_id, $user_name, sprintf( __( "Subscription payment has been made. Amount: %s. Subscriber Id: %s", "gravityforms" ), GFCommon::to_money( $new_payment_amount, $entry[ "currency" ] ), $subscription_id ) );
-							$transaction_id = $subscription_id;
-							GFStripeData::insert_transaction( $entry_id, "payment", $subscription_id, $transaction_id, $new_payment_amount );
-							break;
-
-						case "expired" :
-							$entry[ "payment_status" ] = "Expired";
-							RGFormsModel::update_lead( $entry );
-							RGFormsModel::add_note( $entry[ "id" ], $user_id, $user_name, sprintf( __( "Subscription has successfully completed its billing schedule. Subscriber Id: %s", "gravityforms" ), $subscription_id ) );
-							break;
-
-						case "suspended":
-							$entry[ "payment_status" ] = "Failed";
-							RGFormsModel::update_lead( $entry );
-							RGFormsModel::add_note( $entry[ "id" ], $user_id, $user_name, sprintf( __( "Subscription is currently suspended due to a transaction decline, rejection, or error. Suspended subscriptions must be reactivated before the next scheduled transaction or the subscription will be terminated by the payment gateway. Subscriber Id: %s", "gravityforms" ), $subscription_id ) );
-
-							break;
-
-						case "terminated":
-						case "canceled":
-							self::cancel_subscription( $entry );
-							RGFormsModel::add_note( $entry_id, $user_id, $user_name, sprintf( __( "Subscription has been canceled. Subscriber Id: %s", "gravityforms" ), $subscription_id ) );
-							break;
-
-						default:
-							$entry[ "payment_status" ] = "Failed";
-							RGFormsModel::update_lead( $entry );
-							RGFormsModel::add_note( $entry[ "id" ], $user_id, $user_name, sprintf( __( "Subscription is currently suspended due to a transaction decline, rejection, or error. Suspended subscriptions must be reactivated before the next scheduled transaction or the subscription will be terminated by the payment gateway. Subscriber Id: %s", "gravityforms" ), $subscription_id ) );
-							break;
-					}
-				}
-
-			}
-		}
-
-	}*/
-
 	public static function parse_request() {
 		//Ignore requests that are not Stripe
 		if( RGForms::get( 'page' ) != 'gf_stripe_listener' )
@@ -3423,11 +2654,6 @@ class GFStripe {
 		if ( 'customer.subscription.deleted' == $stripe_event[ 'type' ] ) {
 			$subscription = $stripe_event[ 'data' ]->subscription;
 			$customer_id = $subscription[ 'customer' ];
-
-
-			//Find entry/lead
-
-				//get all subscriptions, match customer_id to subscription_customer_id, if only one, then save $entry_id = lead_id
 
 			//Get all Stripe subscriptions where ['customer_id'] == $customer_id
 			global $wpdb;
@@ -3536,21 +2762,15 @@ class GFStripe {
 		}
 
 		try {
-			//$canceled_subscription = $customer->cancelSubscription( array( 'at_period_end' => true ) );
-			$canceled_subscription = $customer->cancelSubscription();	//for testing
+			$canceled_subscription = $customer->cancelSubscription( array( 'at_period_end' => true ) );
+			//$canceled_subscription = $customer->cancelSubscription();	//for testing
 		}
 		catch( Exception $e ) {
 			die( '0' );
 		}
 
-		/*$cancellation    = self::get_arb();
-		$cancel_response = $cancellation->cancelSubscription( $lead[ "transaction_id" ] );
-		if ( $cancel_response->isOk() ) {
-			self::cancel_subscription( $lead );
-			die( '1' );
-		}*/
-		//if ( true == $canceled_subscription[ 'cancel_at_period_end' ] ) {
-		if ( 'canceled' == $canceled_subscription[ 'status' ] ) {	//for testing
+		if ( true == $canceled_subscription[ 'cancel_at_period_end' ] ) {
+		//if ( 'canceled' == $canceled_subscription[ 'status' ] ) {	//for testing
 					self::cancel_subscription( $lead );
 					die( '1' );
 		}
@@ -3706,37 +2926,18 @@ class GFStripe {
 		return $str;
 	}
 
-	/*private static function get_product_options( $form, $selected_field ) {
-		$str    = "<option value=''>" . __( 'Select a field', 'gravityforms-stripe' ) . '</option>';
-		$fields = GFCommon::get_fields_by_type( $form, array( 'product' ) );
-		foreach ( $fields as $field ) {
-			$field_id    = $field[ "id" ];
-			$field_label = RGFormsModel::get_label( $field );
-
-			$selected = $field_id == $selected_field ? "selected='selected'" : "";
-			$str .= "<option value='" . $field_id . "' " . $selected . ">" . $field_label . '</option>';
-		}
-
-		$selected = $selected_field == 'all' ? "selected='selected'" : '';
-		$str .= "<option value='all' {$selected}>" . __( 'Form Total', 'gravityforms-stripe' ) . '</option>';
-		return $str;
-	}*/
 
 	private static function get_plan_options( $form, $selected_field ) {
 			$str    = "<option value=''>" . __( 'Select a field', 'gravityforms-stripe' ) . '</option>';
 			$fields = GFCommon::get_fields_by_type( $form, array( 'product' ) );
 			foreach ( $fields as $field ) {
-				//if ( 'stripe-subscription' == $field['inputType'] ) {
 					$field_id    = $field[ "id" ];
 					$field_label = RGFormsModel::get_label( $field );
 
 					$selected = $field_id == $selected_field ? "selected='selected'" : "";
 					$str .= "<option value='" . $field_id . "' " . $selected . ">" . $field_label . '</option>';
-				//}
 			}
 
-			//$selected = $selected_field == 'all' ? "selected='selected'" : '';
-			//$str .= "<option value='all' {$selected}>" . __( 'Form Total', 'gravityforms-stripe' ) . '</option>';
 			return $str;
 	}
 

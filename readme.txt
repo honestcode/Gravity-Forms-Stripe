@@ -3,8 +3,8 @@ Contributors: naomicbush
 Donate link: http://naomicbush.com/
 Tags: form, forms, gravity, gravity form, gravity forms, gravityforms, stripe, payment, payments, subscribe, subscriptions, recurring billing, paypal, authorize.net, credit cards, online payment
 Requires at least: 3.3.1
-Tested up to: 3.3.1
-Stable tag: 0.1.3
+Tested up to: 3.3.2
+Stable tag: 0.2
 
 Easy and secure credit card payments on your WordPress site with Stripe and Gravity Forms!
 
@@ -26,7 +26,7 @@ Requires WordPress 3.3.1, PHP 5.3 (although it worked for me when initially test
 
 **Upcoming Features**
 * Receipts
-* [Make a request](http://naomicbush.com/)
+* [Make a request](http://naomicbush.com/gravity-forms-stripe-add-on/)
 
 **Support**
 
@@ -34,7 +34,7 @@ Requires WordPress 3.3.1, PHP 5.3 (although it worked for me when initially test
 
 * Feel free to leave a message in the forum, or open an issue or pull request on [GitHub](https://github.com/naomicbush/Gravity-Forms-Stripe) - no guarantees, though
 
-* If you want to be sure that I see & respond to your request or issue, I consider [donations](http://naomicbush.com) a fair exchange :-)
+* If you want to be sure that I see & respond to your request or issue, I consider [donations](http://naomicbush.com) a fair exchange or you can gift me something from my [wishlist](http://amzn.com/w/AHME2QWE75ES) :-)
 
 
 **Current Limitations**
@@ -57,8 +57,9 @@ This section describes how to install and setup the Gravity Forms Stripe Add-On.
 2. Make sure that Gravity Forms is activated
 3. Activate the plugin through the 'Plugins' menu in WordPress
 4. Add your Stripe API keys to the Stripe tab on the Settings page (Forms->Settings).
-5. Create a form, adding at least one product field along with the new 'Credit Card' field that appears under 'Pricing Fields.' Keep in mind that Stripe accepts a minimum charge of $0.50 - this means that the total amount of your form must be at least $0.50.
-6. Under Forms->Stripe, add a Stripe feed for your new form.
+5. If using Stripe subscriptions, follow the instructions to setup your Stripe webhooks and check the box once you are done.
+6. Create a form, adding at least one product field along with the new 'Credit Card' field that appears under 'Pricing Fields.' Keep in mind that Stripe accepts a minimum charge of $0.50 - this means that the total amount of your form must be at least $0.50.
+7. Under Forms->Stripe, add a Stripe feed for your new form.
 
 == Frequently Asked Questions ==
 
@@ -73,9 +74,10 @@ $0.50, [per Stripe](https://stripe.com/help/faq)
 1. Settings page
 2. Credit Card field
 3. Stripe feed
+4. Webhook Setup
 
 == Changelog ==
-= new version number =
+= 0.2 =
 * Process subscriptions/recurring payments
 * Create a customer in Stripe for all transactions
 

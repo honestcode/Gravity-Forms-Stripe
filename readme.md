@@ -12,7 +12,7 @@ This [Gravity Forms](http://naomicbush.com/getgravityforms) add-on integrates St
 
 ### Up Next
 * Receipts
-* [Make a request](http://naomicbush.com/)
+* [Make a request](http://naomicbush.com/gravity-forms-stripe-add-on/)
 
 ## Requirements
 * WordPress 3.3.1
@@ -23,7 +23,7 @@ This [Gravity Forms](http://naomicbush.com/getgravityforms) add-on integrates St
 ## Support
 * Please note that this plugin has not been extensively tested so use at your own risk - I needed it for a few projects and it works for me.
 * Feel free to open an issue or pull request - no guarantees, though
-* If you want to be sure that I see & respond to your request or issue, I consider [donations](http://naomicbush.com) a fair exchange :-)
+* If you want to be sure that I see & respond to your request or issue, I consider [donations](http://naomicbush.com) a fair exchange or you can gift me something from my [wishlist](http://amzn.com/w/AHME2QWE75ES) :-)
 
 ## Current Limitations
 * Subscription product can be the *only* product on the form
@@ -40,11 +40,12 @@ https://github.com/naomicbush/Gravity-Forms-Stripe/issues
 2. Make sure that Gravity Forms is activated
 3. Activate the plugin through the 'Plugins' menu in WordPress
 4. Add your Stripe API keys to the Stripe tab on the Settings page (Forms->Settings).
-5. Create a form, adding at least one product field along with the new 'Credit Card' field that appears under 'Pricing Fields.' Keep in mind that Stripe accepts a minimum charge of $0.50 - this means that the total amount of your form must be at least $0.50.
-6. Under Forms->Stripe, add a Stripe feed for your new form.
+5. If using Stripe subscriptions, follow the instructions to setup your Stripe webhooks and check the box once you are done.
+6. Create a form, adding at least one product field along with the new 'Credit Card' field that appears under 'Pricing Fields.' Keep in mind that Stripe accepts a minimum charge of $0.50 - this means that the total amount of your form must be at least $0.50.
+7. Under Forms->Stripe, add a Stripe feed for your new form.
 
 ## Changelog
-### new version number (release date)
+### 0.2 (beta)
 * Process subscriptions/recurring payments
 * Create a new customer in Stripe for all transactions
 
