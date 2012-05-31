@@ -2197,28 +2197,36 @@ class GFStripe {
 		}
 
 		//create charge
-		self::$log->LogDebug( 'Creating the charge' );
 		self::include_api();
 		Stripe::setApiKey( self::get_api_key( 'secret' ) );
+		self::$log->LogDebug( 'Creating the customer' );
 		try {
 			$customer = Stripe_Customer::create( array(
 																					 	'description'	=> $form_data[ 'name' ],
-																					 	'card' 				=> $form_data[ 'credit_card' ]
+																					 	'card' 				=> $form_data[ 'credit_card' ],
+																						'email'				=> $form_data[ 'email' ]
 																					 ) );
 		}
 		catch( Exception $e ){
 			$customer = '';
+			self::$log->LogError( 'Customer failed' );
+			$error_class   = get_class( $e );
+			$error_message = $e->getMessage();
+			$response      = $error_class . ': ' . $error_message;
+			self::$log->LogError( print_r( $response, true ) );
 		}
 		try {
 			if ( ! empty( $customer ) ) {
+				self::$log->LogDebug( 'Creating the charge, using the customer ID' );
 				$response = Stripe_Charge::create( array(
 																						'amount'      => ( $form_data[ 'amount' ] * 100 ),
 																						'currency'    => 'usd',
-																						'customer'    => $customer,
+																						'customer'    => $customer[ 'id' ],
 																						'description' => implode( '\n', $form_data[ 'line_items' ] )
 																					) );
 			}
 			else {
+				self::$log->LogDebug( 'Creating the charge, using the card token' );
 				$response = Stripe_Charge::create( array(
 																							'amount'      => ( $form_data[ 'amount' ] * 100 ),
 																							'currency'    => 'usd',
