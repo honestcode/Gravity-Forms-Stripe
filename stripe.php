@@ -9,7 +9,7 @@ Author URI: http://naomicbush.com
 
 ------------------------------------------------------------------------
 Copyright 2012 Naomi C. Bush
-last updated: May 8, 2012
+last updated: June 1, 2012
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -2032,140 +2032,137 @@ class GFStripe {
 	public static function gform_get_form_filter( $form_string ) {
 
 
-		//Get form ID
-		$form_id = stristr( $form_string, 'gform_wrapper_' );
-		$form_id = str_ireplace( 'gform_wrapper_', '', $form_id );
-		//$form_id = stristr( $form_id, "'", true );
-		$form_id = strtok( $form_id, "'" );
+			//Get form ID
+			$form_id = stristr( $form_string, 'gform_wrapper_' );
+			$form_id = str_ireplace( 'gform_wrapper_', '', $form_id );
+			//$form_id = stristr( $form_id, "'", true );
+			$form_id = strtok( $form_id, "'" );
 
-		//Check for credit card field
-		$form = RGFormsModel::get_form_meta( $form_id );
-		if ( GFCommon::has_credit_card_field( $form ) ) {
+			//Check for credit card field
+			$form = RGFormsModel::get_form_meta( $form_id );
+			if ( GFCommon::has_credit_card_field( $form ) ) {
 
-			//Check for Stripe feed
-			$form_feeds = GFStripeData::get_feed_by_form( $form_id );
-			if ( ! empty( $form_feeds ) ) {
+				//Check for Stripe feed
+				$form_feeds = GFStripeData::get_feed_by_form( $form_id );
+				if ( ! empty( $form_feeds ) ) {
 
-				//Get Stripe API key
-				$settings = get_option( 'gf_stripe_settings' );
-				$mode     = rgar( $settings, 'mode' );
-				switch ( $mode ) {
-					case 'test':
-						$publishable_key = esc_attr( rgar( $settings, 'test_publishable_key' ) );
-						break;
-					case 'live':
-						$publishable_key = esc_attr( rgar( $settings, 'live_publishable_key' ) );
-						break;
-					default:
-						//something is wrong TODO better error handling here
-						return $form_string;
-				}
-
-				//Get credit card field ID and address fields if they exist
-				foreach ( $form['fields'] as $field ) {
-					if ( 'creditcard' == $field[ 'type' ] ) {
-						$field_id = $field['id'];
+					//Get Stripe API key
+					$settings = get_option( 'gf_stripe_settings' );
+					$mode     = rgar( $settings, 'mode' );
+					switch ( $mode ) {
+						case 'test':
+							$publishable_key = esc_attr( rgar( $settings, 'test_publishable_key' ) );
+							break;
+						case 'live':
+							$publishable_key = esc_attr( rgar( $settings, 'live_publishable_key' ) );
+							break;
+						default:
+							//something is wrong TODO better error handling here
+							return $form_string;
 					}
-					else if ( ( 'address' == $field[ 'type' ] )  ) {
-						$address_required = $field['isRequired'];
-						if ( $address_required ) {
-							foreach ( $field['inputs'] as $input ) {
-								if ( ( $field['id'] . '.1' ) == $input['id'] ) {
-									$street_input_id = $form_id . '_' . $field['id'] . '_1';
-								}
-								else if ( ( ( $field['id'] . '.4' ) == $input['id'] ) && ( ! $field['hideState'] ) ) {
-									$state_input_id = $form_id . '_' . $field['id'] . '_4';
-								}
-								else if ( ( $field['id'] . '.5' ) == $input['id'] ) {
-									$zip_input_id = $form_id . '_' . $field['id'] . '_5';
-								}
-								else if ( ( ( $field['id'] . '.6' ) == $input['id'] ) && ( ! $field['hideCountry'] ) ) {
-									$country_input_id = $form_id . '_' . $field['id'] . '_6';
+
+					//Get credit card field ID and address fields if they exist
+					foreach ( $form['fields'] as $field ) {
+						if ( 'creditcard' == $field[ 'type' ] ) {
+							$field_id = $field['id'];
+						}
+						else if ( ( 'address' == $field[ 'type' ] )  ) {
+							$address_required = $field['isRequired'];
+							if ( $address_required ) {
+								foreach ( $field['inputs'] as $input ) {
+									if ( ( $field['id'] . '.1' ) == $input['id'] ) {
+										$street_input_id = $form_id . '_' . $field['id'] . '_1';
+									}
+									else if ( ( ( $field['id'] . '.4' ) == $input['id'] ) && ( ! $field['hideState'] ) ) {
+										$state_input_id = $form_id . '_' . $field['id'] . '_4';
+									}
+									else if ( ( $field['id'] . '.5' ) == $input['id'] ) {
+										$zip_input_id = $form_id . '_' . $field['id'] . '_5';
+									}
+									else if ( ( ( $field['id'] . '.6' ) == $input['id'] ) && ( ! $field['hideCountry'] ) ) {
+										$country_input_id = $form_id . '_' . $field['id'] . '_6';
+									}
 								}
 							}
 						}
 					}
-				}
 
-				//Make sure JS gets added for multi-page forms
-				$needle      = "<meta charset='UTF-8' /></head>";
-				$js          = "<script type='text/javascript' src='https://js.stripe.com/v1/'></script>";
-				$form_string = self::inject_gf_stripe( $js, $form_string, $needle );
+					//Make sure JS gets added for multi-page forms
+					$needle      = "<meta charset='UTF-8' /></head>";
+					$js          = "<script type='text/javascript' src='https://js.stripe.com/v1/'></script>";
+					$form_string = self::inject_gf_stripe( $js, $form_string, $needle );
 
-				//Output JS to create token
-				$needle      = "function gformInitSpinner_{$form_id}(){";
-				$js          = "function stripeResponseHandler(status, response) {" .
-					"if (response.error) {" .
-						"var param = response.error.param;" .
-						"var form$ = jQuery('#gform_{$form_id}');" .
-						"form$.append(\"<input type='hidden' name='create_token_error' value='\" + message + \"' />\");" .
-					"} else {" .
-						"var form$ = jQuery('#gform_{$form_id}');" .
-						"var token = response['id'];" .
-						"form$.append(\"<input type='hidden' name='stripeToken' value='\" + token + \"' />\");" .
-					"}" .
-					"form$.get(0).submit();" .
-				"}";
-				$form_string = self::inject_gf_stripe( $js, $form_string, $needle );
-
-				$needle      = "});" .
-					"}" .
-					"jQuery(document).ready(function($){" .
-					"gformInitSpinner_{$form_id}();";
-				$js          = "var last_page = jQuery('#gform_target_page_number_{$form_id}').val();" .
-
-					"if ( last_page === '0' ){" .
-						"var form$ = jQuery('#gform_{$form_id}');" .
-						"Stripe.setPublishableKey('" . $publishable_key . "');" .
-						"var card_number = jQuery('#gform_{$form_id} span.ginput_cardextras').prev().children(':input').val();" .
-						"var exp_month = jQuery('#gform_{$form_id} .ginput_card_expiration_month').val();" .
-						"var exp_year = jQuery('#gform_{$form_id} .ginput_card_expiration_year').val();" .
-						"var cvc = jQuery('#gform_{$form_id} .ginput_card_security_code').val();" .
-						"var cardholder_name = jQuery('#gform_{$form_id} #input_{$form_id}_{$field_id}_5').val();";
-
-				if ( isset( $address_required ) && $address_required) {
-					$js .= ( !empty( $street_input_id) ) ? "var address_line1 = jQuery('#gform_{$form_id} #input_{$street_input_id}').val();" : "var address_line1 = '';";
-					if ( isset( $state_input_id) ) {
-						$js .= ( !empty( $state_input_id ) )  ? "var address_state = jQuery('#gform_{$form_id} #input_{$state_input_id}').val();" : "var address_state = '';";
-					}
-					$js .= ( !empty( $zip_input_id) ) ? "var address_zip = jQuery('#gform_{$form_id} #input_{$zip_input_id}').val();" : "var address_zip = '';";
-					if ( isset( $country_input_id) ) {
-						$js .= ( !empty( $country_input_id) ) ? "var address_country = jQuery('#gform_{$form_id} #input_{$country_input_id}').val();" : "var address_country = '';";
-					}
-				}
-
-				$js .=
-						"var card_number_valid = Stripe.validateCardNumber(card_number);" .
-						"var exp_date_valid = Stripe.validateExpiry(exp_month, exp_year);" .
-						"var cvc_valid = Stripe.validateCVC(cvc);" .
-						"var cardholder_name_valid = (cardholder_name.length > 0 ) ? true : false;" .
-						"if ( !card_number_valid || !exp_date_valid || !cvc_valid || !cardholder_name_valid ) {".
-							"form$.append(\"<input type='hidden' name='card_number_valid' value='\" + card_number_valid + \"' /><input type='hidden' name='exp_date_valid' value='\" + exp_date_valid + \"' /><input type='hidden' name='cvc_valid' value='\" + cvc_valid + \"' /><input type='hidden' name='cardholder_name_valid' value='\" + cardholder_name_valid + \"' />\");" .
-						"} else if ( ( ! ( typeof address_line1 === 'undefined' ) ) && ( ( ! ( address_line1.length > 0 ) ) || ( ! ( address_zip.length > 0 ) ) || ( ( ! ( typeof address_state === 'undefined' ) ) && ( ! ( address_state.length > 0 ) ) ) || ( ( ! ( typeof address_country === 'undefined' ) ) && ( ! ( address_country.length > 0 ) ) ) ) ) { " .
-
+					//add JS to create token
+					$js          = "<script type='text/javascript'>".
+							"function stripeResponseHandler(status, response) {" .
+						"if (response.error) {" .
+							"var param = response.error.param;" .
+							"var form$ = jQuery('#gform_{$form_id}');" .
+							"form$.append(\"<input type='hidden' name='create_token_error' value='\" + message + \"' />\");" .
 						"} else {" .
-							"var token = Stripe.createToken({" .
-								"number: card_number," .
-								"exp_month: exp_month," .
-								"exp_year: exp_year," .
-								"cvc: cvc," .
-								"name: cardholder_name," .
-								"address_line1: ( ! ( typeof address_line1 === 'undefined' ) ) ? address_line1 : ''," .
-								"address_zip: ( ! ( typeof address_zip === 'undefined' ) ) ? address_zip : ''," .
-								"address_state: ( ! ( typeof address_state === 'undefined' ) ) ? address_state : ''," .
-								"address_country: ( ! ( typeof address_country === 'undefined' ) ) ? address_country : ''," .
-								"}, stripeResponseHandler);" .
-							"return false;" .
+							"var form$ = jQuery('#gform_{$form_id}');" .
+							"var token = response['id'];" .
+							"form$.append(\"<input type='hidden' name='stripeToken' value='\" + token + \"' />\");" .
 						"}" .
-
+						"form$.get(0).submit();" .
 					"}";
-				$form_string = self::inject_gf_stripe( $js, $form_string, $needle );
+					$js          .= "jQuery(document).bind('gform_post_render', function(event, formId, currentPage) {" .
+							"jQuery('#gform_{$form_id}').submit(function(){" .
+						"var last_page = jQuery('#gform_target_page_number_{$form_id}').val();" .
+						"if ( last_page === '0' ){" .
+							"var form$ = jQuery('#gform_{$form_id}');" .
+							"Stripe.setPublishableKey('" . $publishable_key . "');" .
+							"var card_number = jQuery('#gform_{$form_id} span.ginput_cardextras').prev().children(':input').val();" .
+							"var exp_month = jQuery('#gform_{$form_id} .ginput_card_expiration_month').val();" .
+							"var exp_year = jQuery('#gform_{$form_id} .ginput_card_expiration_year').val();" .
+							"var cvc = jQuery('#gform_{$form_id} .ginput_card_security_code').val();" .
+							"var cardholder_name = jQuery('#gform_{$form_id} #input_{$form_id}_{$field_id}_5').val();";
+
+					if ( isset( $address_required ) && $address_required) {
+						$js .= ( !empty( $street_input_id) ) ? "var address_line1 = jQuery('#gform_{$form_id} #input_{$street_input_id}').val();" : "var address_line1 = '';";
+						if ( isset( $state_input_id) ) {
+							$js .= ( !empty( $state_input_id ) )  ? "var address_state = jQuery('#gform_{$form_id} #input_{$state_input_id}').val();" : "var address_state = '';";
+						}
+						$js .= ( !empty( $zip_input_id) ) ? "var address_zip = jQuery('#gform_{$form_id} #input_{$zip_input_id}').val();" : "var address_zip = '';";
+						if ( isset( $country_input_id) ) {
+							$js .= ( !empty( $country_input_id) ) ? "var address_country = jQuery('#gform_{$form_id} #input_{$country_input_id}').val();" : "var address_country = '';";
+						}
+					}
+
+					$js .=
+							"var card_number_valid = Stripe.validateCardNumber(card_number);" .
+							"var exp_date_valid = Stripe.validateExpiry(exp_month, exp_year);" .
+							"var cvc_valid = Stripe.validateCVC(cvc);" .
+							"var cardholder_name_valid = (cardholder_name.length > 0 ) ? true : false;" .
+							"if ( !card_number_valid || !exp_date_valid || !cvc_valid || !cardholder_name_valid ) {".
+								"form$.append(\"<input type='hidden' name='card_number_valid' value='\" + card_number_valid + \"' /><input type='hidden' name='exp_date_valid' value='\" + exp_date_valid + \"' /><input type='hidden' name='cvc_valid' value='\" + cvc_valid + \"' /><input type='hidden' name='cardholder_name_valid' value='\" + cardholder_name_valid + \"' />\");" .
+							"} else if ( ( ! ( typeof address_line1 === 'undefined' ) ) && ( ( ! ( address_line1.length > 0 ) ) || ( ! ( address_zip.length > 0 ) ) || ( ( ! ( typeof address_state === 'undefined' ) ) && ( ! ( address_state.length > 0 ) ) ) || ( ( ! ( typeof address_country === 'undefined' ) ) && ( ! ( address_country.length > 0 ) ) ) ) ) { " .
+
+							"} else {" .
+								"var token = Stripe.createToken({" .
+									"number: card_number," .
+									"exp_month: exp_month," .
+									"exp_year: exp_year," .
+									"cvc: cvc," .
+									"name: cardholder_name," .
+									"address_line1: ( ! ( typeof address_line1 === 'undefined' ) ) ? address_line1 : ''," .
+									"address_zip: ( ! ( typeof address_zip === 'undefined' ) ) ? address_zip : ''," .
+									"address_state: ( ! ( typeof address_state === 'undefined' ) ) ? address_state : ''," .
+									"address_country: ( ! ( typeof address_country === 'undefined' ) ) ? address_country : ''," .
+									"}, stripeResponseHandler);" .
+								"return false;" .
+							"}" .
+
+						"}" .
+									"});" .
+					"});</script>";
+					$form_string .= $js;
+				}
 			}
+
+
+			return $form_string;
 		}
-
-
-		return $form_string;
-	}
 
 	private static function make_product_payment( $config, $validation_result ) {
 

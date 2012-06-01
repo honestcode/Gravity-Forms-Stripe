@@ -25,7 +25,9 @@ Requires WordPress 3.3.1, PHP 5.3 (although it worked for me when initially test
 * Recurring/Subscription Payments
 
 **Upcoming Features**
-* Receipts
+
+* Add line items to invoices
+* Pretty receipts?
 * [Make a request](http://naomicbush.com/gravity-forms-stripe-add-on/)
 
 **Support**
@@ -47,6 +49,10 @@ Requires WordPress 3.3.1, PHP 5.3 (although it worked for me when initially test
 **Known Issues**
 
 * https://github.com/naomicbush/Gravity-Forms-Stripe/issues
+
+**Supporters**
+
+[daveshine](http://profiles.wordpress.org/daveshine/), [admodiggity](http://profiles.wordpress.org/admodiggity/), [pnommensen](http://profiles.wordpress.org/pnommensen/), Linda C, [jacobdubail](http://profiles.wordpress.org/jacobdubail/)
 
 
 == Installation ==
@@ -86,6 +92,7 @@ $0.50, [per Stripe](https://stripe.com/help/faq)
 = 0.2 =
 * Process subscriptions/recurring payments
 * Create a customer in Stripe for all transactions
+* Fix Stripe JS to work without AJAX
 
 = 0.1.3 =
 * Fix credit card field conflict with other GF payment add-ons
@@ -112,4 +119,3 @@ Important fix for error handling! Please upgrade to the latest version.
 
 = 0.1.1 =
 Important fix! Please upgrade to the latest version or your form may not correctly process payments.
-

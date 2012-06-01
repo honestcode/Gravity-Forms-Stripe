@@ -11,7 +11,8 @@ This [Gravity Forms](http://naomicbush.com/getgravityforms) add-on integrates St
 * Recurring/Subscription Payments
 
 ### Up Next
-* Receipts
+* Add line items to invoices
+* Pretty receipts?
 * [Make a request](http://naomicbush.com/gravity-forms-stripe-add-on/)
 
 ## Requirements
@@ -53,6 +54,7 @@ https://github.com/naomicbush/Gravity-Forms-Stripe/issues
 ### 0.2 (beta)
 * Process subscriptions/recurring payments
 * Create a new customer in Stripe for all transactions
+* Fix Stripe JS to work without AJAX
 
 ### 0.1.3 (April 19, 2012)
 * Fix credit card field conflict with other GF payment add-ons
@@ -69,6 +71,10 @@ https://github.com/naomicbush/Gravity-Forms-Stripe/issues
 
 ### 0.1 (April 3, 2012)
 * First release
+
+## Supporters
+
+[deckerweb](https://github.com/deckerweb), [admodiggity](https://github.com/admodiggity), [pnommensen](https://github.com/pnommensen), Linda C, [jacobdubail](https://github.com/jacobdubail)
 
 ## License
 This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 2 of the License, or (at your option) any later version.
